@@ -1,39 +1,44 @@
-# importing necessary libraries
-import mysql.connector
+import pyodbc
 import pandas as pd
 
-# connecting mysql server
-database = mysql.connector.connect(
-    host="localhost",
-    user="root",
-    database="hospital")
-cursor = database.cursor()
-query2 = "select * from patients"
 
-# executing cursor
-cursor.execute(query2)
-
-# fetching tables
-table_rows = cursor.fetchall()
-df = pd.read_sql('SELECT * FROM patients', con=database)  # fitting into pandas dataframe
-df.set_index(['cust_ID'], inplace=True)  # setting default index
-# print (df)
-ans = df.loc[df['Country'] == "IND"]
+server = 'KIRAN\SQLEXPRESS' 
+database = 'HospitalDB'
+username = ''  
+password = ''  
 
 
-def show_data(country):
-    data = df.loc[df['Country'] == country]
-    print(data)
+connection_string = f"""
+    DRIVER={{SQL Server}};
+    SERVER={server};
+    DATABASE={database};
+    Trusted_Connection=yes;
+"""
+
+# Establish the connection
+conn = pyodbc.connect(connection_string)
+
+# Testing the connection
+query = "SELECT * FROM Staging_Customers"
+
+# Fetch the data into a pandas DataFrame
+df = pd.read_sql(query, conn)
+
+# Display the result
+print(df)
+
+# Load the data from SQL
+query = "SELECT * FROM Staging_Customers"
+df = pd.read_sql(query, conn)
 
 
-def get_file(country):
-    data = df.loc[df['Country'] == country]
-    file_name = str(country)
-    data.to_csv('C:/Users/Gaurav/downloads/' + country + ".csv")  # replace path with your desired path
-    print("File has been created to the specified path")
+df['DOB'] = pd.to_datetime(df['DOB'], format='%Y-%m-%d')
 
+# Calculate age 
+df['Calculated_Age'] = (pd.to_datetime('today') - df['DOB']).dt.days // 365
 
-# calling functions
+df['Age_Validation'] = df['Age'] == df['Calculated_Age']
+print(df[['Cust_Name', 'Age', 'Calculated_Age', 'Age_Validation']])
 
-show_data("IND")
-get_file("IND")
+# Close the connection
+conn.close()
